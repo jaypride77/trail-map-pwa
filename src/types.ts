@@ -14,3 +14,5 @@ export interface CalibrationPoint {
 }
 
 export type AppState = 'idle' | 'calibrating' | 'tracking';
+export type CalibrationMode = 'single' | 'two-point';
+export type CalibrationStep = 1 | 2;

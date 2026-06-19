@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
-import type { AppState, PixelCoord } from './types';
+import type { AppState, CalibrationMode, CalibrationStep, PixelCoord, CalibrationPoint } from './types';
 import type { MapCalibration } from './calibration/types';
 import { createSinglePointCalibration } from './calibration/singlePoint';
+import { createTwoPointCalibration } from './calibration/twoPoint';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useMapImage } from './hooks/useMapImage';
 import { Uploader } from './components/Uploader';
@@ -13,6 +14,9 @@ const DEFAULT_PIXELS_PER_METER = 2;
 
 export default function App() {
   const [appState, setAppState] = useState<AppState>('idle');
+  const [calibrationMode, setCalibrationMode] = useState<CalibrationMode>('single');
+  const [calibrationStep, setCalibrationStep] = useState<CalibrationStep>(1);
+  const [pendingPoint, setPendingPoint] = useState<CalibrationPoint | null>(null);
   const [calibration, setCalibration] = useState<MapCalibration | null>(null);
   const [pixelsPerMeter, setPixelsPerMeter] = useState(DEFAULT_PIXELS_PER_METER);
   const [showTrail, setShowTrail] = useState(true);
@@ -28,11 +32,16 @@ export default function App() {
     [load],
   );
 
-  function handleSetLocation() {
+  function startCalibration(mode: CalibrationMode) {
+    setCalibrationMode(mode);
+    setCalibrationStep(1);
+    setPendingPoint(null);
     setAppState('calibrating');
   }
 
   function handleRecalibrate() {
+    setCalibrationStep(1);
+    setPendingPoint(null);
     setAppState('calibrating');
   }
 
@@ -43,22 +52,35 @@ export default function App() {
   function handleCalibrationTap(pixel: PixelCoord) {
     if (appState !== 'calibrating') return;
 
-    // Use current GPS if available; fall back to zero so the dot is visible
-    // even without a signal — user can adjust scale and re-calibrate later.
+    // Use current GPS if available; fall back to zero coords.
     const geoPosition = geo.position ?? { lat: 0, lng: 0 };
+    const point: CalibrationPoint = { pixel, geo: geoPosition };
 
-    const cal = createSinglePointCalibration(
-      { pixel, geo: geoPosition },
-      pixelsPerMeter,
-    );
-    setCalibration(cal);
-    geo.clearTrail();
-    setAppState('tracking');
+    if (calibrationMode === 'single') {
+      const cal = createSinglePointCalibration(point, pixelsPerMeter);
+      setCalibration(cal);
+      geo.clearTrail();
+      setAppState('tracking');
+      return;
+    }
+
+    // Two-point: first tap sets pending, second tap completes calibration.
+    if (calibrationStep === 1) {
+      setPendingPoint(point);
+      setCalibrationStep(2);
+    } else if (calibrationStep === 2 && pendingPoint) {
+      const cal = createTwoPointCalibration(pendingPoint, point);
+      setCalibration(cal);
+      setPendingPoint(null);
+      geo.clearTrail();
+      setAppState('tracking');
+    }
   }
 
   function handleScaleChange(v: number) {
     setPixelsPerMeter(v);
-    if (calibration?.points[0]) {
+    // Only meaningful for single-point calibration; two-point derives its own scale.
+    if (calibration?.points.length === 1) {
       setCalibration(createSinglePointCalibration(calibration.points[0], v));
     }
   }
@@ -67,11 +89,16 @@ export default function App() {
     return <Uploader onFile={handleFile} loading={loading} error={error} />;
   }
 
+  // Show pending first point as a preview dot during two-point step 2.
+  const previewCalibration = pendingPoint
+    ? createSinglePointCalibration(pendingPoint, pixelsPerMeter)
+    : calibration;
+
   return (
     <div className="mapView">
       <MapCanvas
         imageUrl={dataUrl}
-        calibration={calibration}
+        calibration={previewCalibration}
         livePosition={geo.position}
         trail={showTrail ? geo.trail : []}
         onCalibrationTap={handleCalibrationTap}
@@ -79,12 +106,14 @@ export default function App() {
       />
       <Toolbar
         appState={appState}
+        calibrationMode={calibrationMode}
+        calibrationStep={calibrationStep}
         calibration={calibration}
         gpsError={geo.error}
         accuracy={geo.accuracy}
         pixelsPerMeter={pixelsPerMeter}
         showTrail={showTrail}
-        onSetLocation={handleSetLocation}
+        onStartCalibration={startCalibration}
         onRecalibrate={handleRecalibrate}
         onLoadNew={handleLoadNew}
         onScaleChange={handleScaleChange}
