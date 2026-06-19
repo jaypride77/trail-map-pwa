@@ -13,6 +13,6 @@ export interface CalibrationPoint {
   geo: GeoCoord;
 }
 
-export type AppState = 'idle' | 'calibrating' | 'tracking';
+export type AppState = 'idle' | 'orienting' | 'calibrating' | 'tracking';
 export type CalibrationMode = 'single' | 'two-point';
 export type CalibrationStep = 1 | 2;

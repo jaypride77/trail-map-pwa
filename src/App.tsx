@@ -3,6 +3,7 @@ import type { AppState, CalibrationMode, CalibrationStep, PixelCoord, Calibratio
 import type { MapCalibration } from './calibration/types';
 import { createSinglePointCalibration } from './calibration/singlePoint';
 import { createTwoPointCalibration } from './calibration/twoPoint';
+import { rotateImageDataUrl } from './upload/rotate';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useMapImage } from './hooks/useMapImage';
 import { Uploader } from './components/Uploader';
@@ -20,17 +21,32 @@ export default function App() {
   const [calibration, setCalibration] = useState<MapCalibration | null>(null);
   const [pixelsPerMeter, setPixelsPerMeter] = useState(DEFAULT_PIXELS_PER_METER);
   const [showTrail, setShowTrail] = useState(true);
-  const { dataUrl, loading, error, load } = useMapImage();
+  const [rotation, setRotation] = useState(0);
+  const { dataUrl, loading, error, load, commitRotation } = useMapImage();
   const geo = useGeolocation(appState === 'tracking');
 
   const handleFile = useCallback(
     (file: File) => {
-      load(file);
-      setCalibration(null);
-      setAppState('idle');
+      load(file).then(() => {
+        setRotation(0);
+        setCalibration(null);
+        setAppState('orienting');
+      });
     },
     [load],
   );
+
+  async function handleConfirmOrientation() {
+    if (!dataUrl) return;
+    if (rotation === 0) {
+      setAppState('idle');
+      return;
+    }
+    const rotated = await rotateImageDataUrl(dataUrl, rotation);
+    commitRotation(rotated);
+    setRotation(0);
+    setAppState('idle');
+  }
 
   function startCalibration(mode: CalibrationMode) {
     setCalibrationMode(mode);
@@ -45,6 +61,11 @@ export default function App() {
     setAppState('calibrating');
   }
 
+  function handleReorient() {
+    setRotation(0);
+    setAppState('orienting');
+  }
+
   function handleLoadNew() {
     window.location.reload();
   }
@@ -52,7 +73,6 @@ export default function App() {
   function handleCalibrationTap(pixel: PixelCoord) {
     if (appState !== 'calibrating') return;
 
-    // Use current GPS if available; fall back to zero coords.
     const geoPosition = geo.position ?? { lat: 0, lng: 0 };
     const point: CalibrationPoint = { pixel, geo: geoPosition };
 
@@ -64,7 +84,6 @@ export default function App() {
       return;
     }
 
-    // Two-point: first tap sets pending, second tap completes calibration.
     if (calibrationStep === 1) {
       setPendingPoint(point);
       setCalibrationStep(2);
@@ -79,7 +98,6 @@ export default function App() {
 
   function handleScaleChange(v: number) {
     setPixelsPerMeter(v);
-    // Only meaningful for single-point calibration; two-point derives its own scale.
     if (calibration?.points.length === 1) {
       setCalibration(createSinglePointCalibration(calibration.points[0], v));
     }
@@ -89,7 +107,6 @@ export default function App() {
     return <Uploader onFile={handleFile} loading={loading} error={error} />;
   }
 
-  // Show pending first point as a preview dot during two-point step 2.
   const previewCalibration = pendingPoint
     ? createSinglePointCalibration(pendingPoint, pixelsPerMeter)
     : calibration;
@@ -98,11 +115,12 @@ export default function App() {
     <div className="mapView">
       <MapCanvas
         imageUrl={dataUrl}
-        calibration={previewCalibration}
-        livePosition={geo.position}
+        calibration={appState === 'orienting' ? null : previewCalibration}
+        livePosition={appState === 'tracking' ? geo.position : null}
         trail={showTrail ? geo.trail : []}
         onCalibrationTap={handleCalibrationTap}
         isCalibrating={appState === 'calibrating'}
+        rotation={appState === 'orienting' ? rotation : 0}
       />
       <Toolbar
         appState={appState}
@@ -113,12 +131,16 @@ export default function App() {
         accuracy={geo.accuracy}
         pixelsPerMeter={pixelsPerMeter}
         showTrail={showTrail}
+        rotation={rotation}
         onStartCalibration={startCalibration}
         onRecalibrate={handleRecalibrate}
+        onReorient={handleReorient}
         onLoadNew={handleLoadNew}
         onScaleChange={handleScaleChange}
         onToggleTrail={() => setShowTrail((v) => !v)}
         onClearTrail={geo.clearTrail}
+        onRotationChange={setRotation}
+        onConfirmOrientation={handleConfirmOrientation}
       />
     </div>
   );

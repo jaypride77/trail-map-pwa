@@ -6,6 +6,7 @@ export interface MapImageState {
   loading: boolean;
   error: string | null;
   load: (file: File) => Promise<void>;
+  commitRotation: (rotatedUrl: string) => void;
 }
 
 export function useMapImage(): MapImageState {
@@ -26,5 +27,9 @@ export function useMapImage(): MapImageState {
     }
   }, []);
 
-  return { dataUrl, loading, error, load };
+  const commitRotation = useCallback((rotatedUrl: string) => {
+    setDataUrl(rotatedUrl);
+  }, []);
+
+  return { dataUrl, loading, error, load, commitRotation };
 }

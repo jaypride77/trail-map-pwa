@@ -8,12 +8,14 @@ interface Props {
   calibration: MapCalibration | null;
   livePosition: GeoCoord | null;
   trail: GeoCoord[];
+  /** Preview rotation in degrees applied only during the orienting step. */
+  rotation?: number;
   /** Called when the user taps the map during calibration. */
   onCalibrationTap?: (pixel: PixelCoord) => void;
   isCalibrating: boolean;
 }
 
-export function MapCanvas({ imageUrl, calibration, livePosition, trail, onCalibrationTap, isCalibrating }: Props) {
+export function MapCanvas({ imageUrl, calibration, livePosition, trail, rotation = 0, onCalibrationTap, isCalibrating }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
 
@@ -60,6 +62,12 @@ export function MapCanvas({ imageUrl, calibration, livePosition, trail, onCalibr
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(scale, scale);
+    if (rotation !== 0) {
+      // Rotate around image center for the orientation preview.
+      ctx.translate(img.width / 2, img.height / 2);
+      ctx.rotate((rotation * Math.PI) / 180);
+      ctx.translate(-img.width / 2, -img.height / 2);
+    }
     ctx.drawImage(img, 0, 0);
     ctx.restore();
 
@@ -92,7 +100,7 @@ export function MapCanvas({ imageUrl, calibration, livePosition, trail, onCalibr
       const screen = toScreen(px, transform);
       drawPulseDot(ctx, screen);
     }
-  }, [transform, imageUrl, calibration, livePosition, trail]);
+  }, [transform, imageUrl, calibration, livePosition, trail, rotation]);
 
   // --- Interaction handlers ---
 

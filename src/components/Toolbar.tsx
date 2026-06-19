@@ -11,12 +11,16 @@ interface Props {
   accuracy: number | null;
   pixelsPerMeter: number;
   showTrail: boolean;
+  rotation: number;
   onStartCalibration: (mode: CalibrationMode) => void;
   onRecalibrate: () => void;
+  onReorient: () => void;
   onLoadNew: () => void;
   onScaleChange: (v: number) => void;
   onToggleTrail: () => void;
   onClearTrail: () => void;
+  onRotationChange: (degrees: number) => void;
+  onConfirmOrientation: () => void;
 }
 
 export function Toolbar({
@@ -28,40 +32,68 @@ export function Toolbar({
   accuracy,
   pixelsPerMeter,
   showTrail,
+  rotation,
   onStartCalibration,
   onRecalibrate,
+  onReorient,
   onLoadNew,
   onScaleChange,
   onToggleTrail,
   onClearTrail,
+  onRotationChange,
+  onConfirmOrientation,
 }: Props) {
   return (
     <div className={styles.bar}>
-      {appState === 'idle' && (
+
+      {/* ── Orientation step ── */}
+      {appState === 'orienting' && (
         <>
-          <p className={styles.modeLabel}>Calibration method</p>
-          <div className={styles.modeRow}>
-            <button
-              className={`${styles.modeBtn} ${styles.modeBtnLeft}`}
-              onClick={() => onStartCalibration('single')}
-            >
-              <span className={styles.modeBtnTitle}>1-Point</span>
-              <span className={styles.modeBtnDesc}>Quick — tap where you stand. Adjust scale manually if needed.</span>
-            </button>
-            <button
-              className={`${styles.modeBtn} ${styles.modeBtnRight}`}
-              onClick={() => onStartCalibration('two-point')}
-            >
-              <span className={styles.modeBtnTitle}>2-Point</span>
-              <span className={styles.modeBtnDesc}>Accurate — tap two known locations. Scale and rotation derived automatically.</span>
-            </button>
+          <p className={styles.orientHint}>
+            Rotate the map so the <strong>north arrow points up ↑</strong>
+          </p>
+          <div className={styles.rotateRow}>
+            <button className={styles.rotateBtn} onClick={() => onRotationChange(rotation - 5)}>−5°</button>
+            <button className={styles.rotateBtn} onClick={() => onRotationChange(rotation - 1)}>−1°</button>
+            <span className={styles.rotateDeg}>{rotation}°</span>
+            <button className={styles.rotateBtn} onClick={() => onRotationChange(rotation + 1)}>+1°</button>
+            <button className={styles.rotateBtn} onClick={() => onRotationChange(rotation + 5)}>+5°</button>
           </div>
+          <button className={styles.primary} onClick={onConfirmOrientation}>
+            North is up — continue
+          </button>
           <button className={styles.secondary} onClick={onLoadNew}>
             Load new map
           </button>
         </>
       )}
 
+      {/* ── Calibration mode picker ── */}
+      {appState === 'idle' && (
+        <>
+          <p className={styles.modeLabel}>Calibration method</p>
+          <div className={styles.modeRow}>
+            <button className={`${styles.modeBtn} ${styles.modeBtnLeft}`} onClick={() => onStartCalibration('single')}>
+              <span className={styles.modeBtnTitle}>1-Point</span>
+              <span className={styles.modeBtnDesc}>Quick — tap where you stand. Adjust scale manually if needed.</span>
+            </button>
+            <button className={`${styles.modeBtn} ${styles.modeBtnRight}`} onClick={() => onStartCalibration('two-point')}>
+              <span className={styles.modeBtnTitle}>2-Point</span>
+              <span className={styles.modeBtnDesc}>Accurate — tap two known locations. Scale and rotation derived automatically.</span>
+            </button>
+          </div>
+          <div className={styles.actions}>
+            <button className={styles.secondary} onClick={onReorient}>
+              Re-orient map
+            </button>
+            <button className={styles.secondary} onClick={onLoadNew}>
+              Load new map
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* ── Calibrating ── */}
       {appState === 'calibrating' && calibrationMode === 'single' && (
         <p className={styles.hint}>Tap the map where you are standing</p>
       )}
@@ -81,6 +113,7 @@ export function Toolbar({
         </>
       )}
 
+      {/* ── Tracking ── */}
       {appState === 'tracking' && (
         <>
           <div className={styles.status}>
@@ -122,6 +155,9 @@ export function Toolbar({
           <div className={styles.actions}>
             <button className={styles.secondary} onClick={onRecalibrate}>
               Re-calibrate
+            </button>
+            <button className={styles.secondary} onClick={onReorient}>
+              Re-orient
             </button>
             <button className={styles.secondary} onClick={onLoadNew}>
               New map

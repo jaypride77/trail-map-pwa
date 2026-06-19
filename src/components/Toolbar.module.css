@@ -83,6 +83,43 @@
   gap: 0.5rem;
 }
 
+.orientHint {
+  text-align: center;
+  color: #ccc;
+  font-size: 0.9rem;
+  margin: 0.1rem 0;
+}
+
+.rotateRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.rotateBtn {
+  background: #2a2a2a;
+  color: #ccc;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  min-width: 2.8rem;
+}
+
+.rotateBtn:active {
+  background: #3a3a3a;
+}
+
+.rotateDeg {
+  color: #f5a623;
+  font-weight: 700;
+  font-size: 1rem;
+  min-width: 3.5rem;
+  text-align: center;
+}
+
 .modeLabel {
   font-size: 0.75rem;
   color: #888;
