@@ -1,0 +1,48 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100dvh;
+  gap: 1rem;
+  padding: 1.5rem;
+  box-sizing: border-box;
+}
+
+.title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.dropzone {
+  width: 100%;
+  max-width: 400px;
+  border: 2px dashed #555;
+  border-radius: 12px;
+  padding: 3rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.dropzone:hover {
+  border-color: #4a90e2;
+  background: rgba(74, 144, 226, 0.05);
+}
+
+.icon {
+  font-size: 3rem;
+  margin: 0 0 0.5rem;
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: #888;
+  margin: 0.25rem 0 0;
+}
+
+.error {
+  color: #e25555;
+  font-size: 0.9rem;
+}
